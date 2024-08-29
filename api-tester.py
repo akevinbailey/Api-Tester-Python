@@ -25,7 +25,7 @@ def print_help():
     print("  -reuseConnects          - Attempts to reuse the connections if the server allows it.")
     print("  -keepConnectsOpen       - Force a new connection with every request (not advised).")
     print("Help:")
-    print("  -? or --help - Display this help message.")
+    print("  -? or --help            - Display this help message.")
 
 
 # Function to make the GET request and measure response time
