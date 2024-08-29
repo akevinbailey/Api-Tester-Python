@@ -1,3 +1,6 @@
+#
+#  Created by A. Kevin Bailey on 8/10/2024 under a GPL3.0 license
+#
 import os
 import sys
 import threading
@@ -19,7 +22,7 @@ def print_help():
     print("  -sleepTime [value]      - Sleep time in milliseconds between calls within a thread. Default is 0")
     print("  -requestTimeOut [value] - HTTP request timeout in milliseconds. Default is 10000.")
     print("  -connectTimeOut [value] - HTTP request timeout in milliseconds. Default is 20000.")
-    print("  -reuseConnects          - Add the request 'Connection: keep-alive' header.")
+    print("  -reuseConnects          - Attempts to reuse the connections if the server allows it.")
     print("  -keepConnectsOpen       - Force a new connection with every request (not advised).")
     print("Help:")
     print("  -? or --help - Display this help message.")
@@ -38,7 +41,8 @@ def fetch_data(print_lock, session, response_times, url, sleep_time, keep_connec
             response_time = (call_end_time - call_start_time) * 1000  # Convert to millisecond
 
             if not keep_connects_open:
-                # Must read the body.  Dumping it to null out.
+                # Must read the body to close the session.  Dumping it to null out.
+                # Not reading the body will keep the connection occupied until the connection timeout.
                 f = open(os.devnull, "w")
                 f.write(response.content.decode("utf-8"))
                 f.close()
@@ -162,6 +166,7 @@ def main():
     # Create and start threads
     for i in range(num_threads):
         # Determine the number of calls for this thread
+        # Add one call to each thread number that is less than the mod of the total calls to compensate for the remainder
         num_calls_this_thread = calls_per_thread + (1 if i < remainder_calls else 0)
 
         thread = threading.Thread(target=fetch_data, args=(
@@ -177,20 +182,21 @@ def main():
     # Capture end time and calculate total time
     end_time = time.time()
     total_time = end_time - start_time
-    print(f"Total test time: {total_time:.2f} s")
-
+    # Calculate requests per second
+    requests_per_second = total_calls / total_time
     # Calculate and print the average response time
     if response_times:
         average_response_time = sum(response_times) / len(response_times)
-        print(f"Average response time: {average_response_time:.2f} ms")
+    else:
+        average_response_time = 0
 
-    # Calculate requests per second
-    requests_per_second = total_calls / total_time
+    print(f"Total thread count: {num_threads}")
+    print(f"Total test time: {total_time:.2f} s")
+    print(f"Average response time: {average_response_time:.2f} ms")
     print(f"Average requests per second: {requests_per_second:.2f}")
 
     # Dump all the connection states
     http_adapter.close()
-
     print("All threads have finished.")
 
 
